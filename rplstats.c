@@ -21,9 +21,9 @@ AUTOSTART_PROCESSES(&rplstats);
 struct etimer et_ping;
 
 static const char ct_json[] = "application/json";
-/* Maximum 40 chars in host name?: 5 x 8 */
-static char host[40] = "[aaaa::1]";
-static uint16_t port = 5000;
+/*[2002:3239:614b:000b:0000:0000:0000:0000]*/
+static char host[64] = "[aaaa::1]";
+static uint16_t port = 80;
 static char path[80] = "/rplstats";
 
 extern uip_ds6_nbr_t uip_ds6_nbr_cache[];
@@ -89,6 +89,7 @@ static uint8_t first;
 
 PROCESS_THREAD(rplstats, ev, data)
 {
+  uip_ipaddr_t *addr;
   PROCESS_BEGIN();
 
   etimer_set(&et_ping, 5 * CLOCK_SECOND);
@@ -102,6 +103,18 @@ PROCESS_THREAD(rplstats, ev, data)
 		  dag = rpl_get_any_dag();
 		  if(dag != NULL) {		  
 			  PRINTF("post!\n\r");
+			  PRINTF("prefix info, len %d\n\r", dag->prefix_info.length);
+			  PRINT6ADDR(&(dag->prefix_info.prefix));
+			  PRINTF("\n\r");
+			  addr = &(dag->prefix_info.prefix);
+			  /* assume 64 bit prefix for now */
+			  sprintf(host, "[%02x%02x:%02x%02x:%02x%02x:%02x%02x::1]", 
+				  ((u8_t *)addr)[0], ((u8_t *)addr)[1], 
+				  ((u8_t *)addr)[2], ((u8_t *)addr)[3], 
+				  ((u8_t *)addr)[4], ((u8_t *)addr)[5], 
+				  ((u8_t *)addr)[6], ((u8_t *)addr)[7]);
+			  PRINTF("host: %s\n\r", host);
+
 			  content_len = create_rank_msg(buf);
 			  s = httpd_ws_request(HTTPD_WS_POST, host, NULL, port,
 					       path, ct_json,
